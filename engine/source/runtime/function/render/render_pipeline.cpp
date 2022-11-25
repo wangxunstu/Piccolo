@@ -11,6 +11,8 @@
 #include "runtime/function/render/passes/ui_pass.h"
 #include "runtime/function/render/passes/particle_pass.h"
 
+#include "runtime/function/render/passes/simple_pass.h"
+
 #include "runtime/function/render/debugdraw/debug_draw_manager.h"
 
 #include "runtime/core/base/macro.h"
@@ -24,6 +26,8 @@ namespace Piccolo
         m_main_camera_pass        = std::make_shared<MainCameraPass>();
         m_tone_mapping_pass       = std::make_shared<ToneMappingPass>();
         m_color_grading_pass      = std::make_shared<ColorGradingPass>();
+        m_downsample_pass         = std::make_shared<DownSamplePass>();
+        m_simple_pass             = std::make_shared<SimplePass>();
         m_ui_pass                 = std::make_shared<UIPass>();
         m_combine_ui_pass         = std::make_shared<CombineUIPass>();
         m_pick_pass               = std::make_shared<PickPass>();
@@ -39,6 +43,8 @@ namespace Piccolo
         m_main_camera_pass->setCommonInfo(pass_common_info);
         m_tone_mapping_pass->setCommonInfo(pass_common_info);
         m_color_grading_pass->setCommonInfo(pass_common_info);
+        m_simple_pass->setCommonInfo(pass_common_info);
+        m_downsample_pass->setCommonInfo(pass_common_info);
         m_ui_pass->setCommonInfo(pass_common_info);
         m_combine_ui_pass->setCommonInfo(pass_common_info);
         m_pick_pass->setCommonInfo(pass_common_info);
@@ -89,6 +95,19 @@ namespace Piccolo
             _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_backup_buffer_even];
         m_color_grading_pass->initialize(&color_grading_init_info);
 
+
+
+        SimplePassInitInfo simple_pass_info;
+        simple_pass_info.render_pass = _main_camera_pass->getRenderPass();
+        simple_pass_info.input_attachment = _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_backup_buffer_even];
+        m_simple_pass->initialize(&simple_pass_info);
+
+		DownSamplePassInitInfo downsample_pass_info;
+		downsample_pass_info.render_pass = _main_camera_pass->getRenderPass();
+		downsample_pass_info.input_attachment = _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd];
+		m_downsample_pass->initialize(&downsample_pass_info);
+
+
         UIPassInitInfo ui_init_info;
         ui_init_info.render_pass = _main_camera_pass->getRenderPass();
         m_ui_pass->initialize(&ui_init_info);
@@ -108,7 +127,7 @@ namespace Piccolo
         FXAAPassInitInfo fxaa_init_info;
         fxaa_init_info.render_pass = _main_camera_pass->getRenderPass();
         fxaa_init_info.input_attachment =
-            _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd];
+            _main_camera_pass->getFramebufferImageViews()[_main_camera_pass_post_process_buffer_even];
         m_fxaa_pass->initialize(&fxaa_init_info);
 
     }
@@ -138,6 +157,7 @@ namespace Piccolo
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
         FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
+        SimplePass& simple_pass              = *(static_cast<SimplePass*>(m_simple_pass.get()));
         UIPass&           ui_pass            = *(static_cast<UIPass*>(m_ui_pass.get()));
         CombineUIPass&    combine_ui_pass    = *(static_cast<CombineUIPass*>(m_combine_ui_pass.get()));
         ParticlePass&     particle_pass      = *(static_cast<ParticlePass*>(m_particle_pass.get()));
@@ -148,8 +168,9 @@ namespace Piccolo
 
         static_cast<MainCameraPass*>(m_main_camera_pass.get())
             ->drawForward(color_grading_pass,
+                          simple_pass,
                           fxaa_pass,
-                          tone_mapping_pass,
+                          tone_mapping_pass,                  
                           ui_pass,
                           combine_ui_pass,
                           particle_pass,
@@ -186,6 +207,9 @@ namespace Piccolo
         static_cast<PointLightShadowPass*>(m_point_light_shadow_pass.get())->draw();
 
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
+		SimplePass& simple_pass = *(static_cast<SimplePass*>(m_simple_pass.get()));
+		DownSamplePass& downsample_pass = *(static_cast<DownSamplePass*>(m_downsample_pass.get()));
+
         FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
         UIPass&           ui_pass            = *(static_cast<UIPass*>(m_ui_pass.get()));
@@ -198,6 +222,8 @@ namespace Piccolo
 
         static_cast<MainCameraPass*>(m_main_camera_pass.get())
             ->draw(color_grading_pass,
+                simple_pass,
+                downsample_pass,
                    fxaa_pass,
                    tone_mapping_pass,
                    ui_pass,
@@ -216,7 +242,9 @@ namespace Piccolo
     {
         MainCameraPass&   main_camera_pass   = *(static_cast<MainCameraPass*>(m_main_camera_pass.get()));
         ColorGradingPass& color_grading_pass = *(static_cast<ColorGradingPass*>(m_color_grading_pass.get()));
-        FXAAPass&         fxaa_pass          = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
+        SimplePass& simple_pass              = *(static_cast<SimplePass*>(m_simple_pass.get()));
+		FXAAPass& fxaa_pass = *(static_cast<FXAAPass*>(m_fxaa_pass.get()));
+		DownSamplePass& downsample_pass = *(static_cast<DownSamplePass*>(m_downsample_pass.get()));
         ToneMappingPass&  tone_mapping_pass  = *(static_cast<ToneMappingPass*>(m_tone_mapping_pass.get()));
         CombineUIPass&    combine_ui_pass    = *(static_cast<CombineUIPass*>(m_combine_ui_pass.get()));
         PickPass&         pick_pass          = *(static_cast<PickPass*>(m_pick_pass.get()));
@@ -227,6 +255,10 @@ namespace Piccolo
             main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_odd]);
         color_grading_pass.updateAfterFramebufferRecreate(
             main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even]);
+        simple_pass.updateAfterFramebufferRecreate(
+            main_camera_pass.getFramebufferImageViews()[_main_camera_pass_backup_buffer_even]);
+		downsample_pass.updateAfterFramebufferRecreate(
+			main_camera_pass.getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd]);
         fxaa_pass.updateAfterFramebufferRecreate(
             main_camera_pass.getFramebufferImageViews()[_main_camera_pass_post_process_buffer_odd]);
         combine_ui_pass.updateAfterFramebufferRecreate(

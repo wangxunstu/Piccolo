@@ -6,6 +6,8 @@
 #include "runtime/function/render/passes/combine_ui_pass.h"
 #include "runtime/function/render/passes/fxaa_pass.h"
 #include "runtime/function/render/passes/tone_mapping_pass.h"
+#include "runtime/function/render/passes/simple_pass.h"
+#include "runtime/function/render/passes/downsample_pass.h"
 #include "runtime/function/render/passes/ui_pass.h"
 #include "runtime/function/render/passes/particle_pass.h"
 
@@ -60,6 +62,8 @@ namespace Piccolo
         void preparePassData(std::shared_ptr<RenderResourceBase> render_resource) override final;
 
         void draw(ColorGradingPass& color_grading_pass,
+            SimplePass& simple_pass,
+            DownSamplePass& downsample_pass,
             FXAAPass& fxaa_pass,
             ToneMappingPass& tone_mapping_pass,
             UIPass& ui_pass,
@@ -68,6 +72,7 @@ namespace Piccolo
             uint32_t          current_swapchain_image_index);
 
         void drawForward(ColorGradingPass& color_grading_pass,
+            SimplePass& simple_pass,
             FXAAPass& fxaa_pass,
             ToneMappingPass& tone_mapping_pass,
             UIPass& ui_pass,
@@ -81,7 +86,7 @@ namespace Piccolo
         RHIImageView* m_directional_light_shadow_color_image_view;
 
         bool                                         m_is_show_axis{ false };
-        bool                                         m_enable_fxaa{ false };
+        bool                                         m_enable_fxaa{ true };
         size_t                                       m_selected_axis{ 3 };
         MeshPerframeStorageBufferObject              m_mesh_perframe_storage_buffer_object;
         AxisStorageBufferObject                      m_axis_storage_buffer_object;
